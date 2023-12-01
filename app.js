@@ -2,10 +2,12 @@ import 'dotenv/config';
 import express from "express";
 import bodyParser from "body-parser";
 import pg from "pg";
-import md5 from 'md5';
+import bcrypt from "bcrypt";
 
 const app = express();
 const port = 3000;
+const saltRounds = 10;
+
 // DATABASE CONNECTION
 const db = new pg.Client({
     user: "postgres",
@@ -41,12 +43,14 @@ app.post("/register", async (req,res)=>{
     const username = req.body.username;
     try {
         const password = req.body.password;
-        //HASHING ENCRYPTED
-        const encrypted = md5(password);
-        const result = await db.query("INSERT INTO userform (username, password) values ($1, $2)",[username,encrypted]);
-        if(result){
-            res.render("secrets");
-        }
+        //bcrypt HASHING  
+        bcrypt.hash(password, saltRounds, (err, hash)=>{
+            const result = db.query("INSERT INTO userform (username, password) values ($1, $2)",[username,hash]);
+            if(result){
+                res.render("secrets");
+            }
+        });
+        
     } catch (error) {
         console.log(error);
     } 
@@ -59,14 +63,14 @@ app.post("/login", async(req,res)=>{
        
         const result = await db.query("SELECT password from userform where username = $1",[username]);
         console.log("PASSWORD FROM DB:" + result.rows[0].password);
+        
         //HASHING ENCRYPTED
-        const decrypted = md5(password)
-        console.log(decrypted);
-        if(result){
-            if(decrypted === result.rows[0].password){
+        const decryptedHash = result.rows[0].password;
+        bcrypt.compare(password, decryptedHash, (err, resulthash)=>{
+            if(resulthash == true){
                 res.render("secrets");
             }
-        }
+        });
     } catch (error) {
         console.log(error);
     } 
