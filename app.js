@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import * as encdec from "@moonstack/encdec";
 import express from "express";
 import bodyParser from "body-parser";
@@ -5,18 +6,19 @@ import pg from "pg";
 
 const app = express();
 const port = 3000;
-
+// DATABASE CONNECTION
 const db = new pg.Client({
     user: "postgres",
-    password: "postgres2023",
+    password: process.env.DB_PASSWORD,
     host: "localhost",
     port: "5432",
     database: "udemy"
 });
 db.connect();
 
-const key = "mysecretkey";
-
+//SECRET KEY from ENVIRONMENT VARIABLES
+const key = process.env.SECRET;
+//Accessing the Public folder
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
@@ -42,7 +44,6 @@ app.post("/register", async (req,res)=>{
     try {
         const password = req.body.password;
         const encrypted = encdec.encrypt(password, key);
-
         const result = await db.query("INSERT INTO userform (username, password) values ($1, $2)",[username,encrypted]);
         if(result){
             res.render("secrets");
