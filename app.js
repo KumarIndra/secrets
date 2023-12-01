@@ -1,8 +1,8 @@
 import 'dotenv/config';
-import * as encdec from "@moonstack/encdec";
 import express from "express";
 import bodyParser from "body-parser";
 import pg from "pg";
+import md5 from 'md5';
 
 const app = express();
 const port = 3000;
@@ -16,8 +16,6 @@ const db = new pg.Client({
 });
 db.connect();
 
-//SECRET KEY from ENVIRONMENT VARIABLES
-const key = process.env.SECRET;
 //Accessing the Public folder
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -43,7 +41,8 @@ app.post("/register", async (req,res)=>{
     const username = req.body.username;
     try {
         const password = req.body.password;
-        const encrypted = encdec.encrypt(password, key);
+        //HASHING ENCRYPTED
+        const encrypted = md5(password);
         const result = await db.query("INSERT INTO userform (username, password) values ($1, $2)",[username,encrypted]);
         if(result){
             res.render("secrets");
@@ -60,10 +59,11 @@ app.post("/login", async(req,res)=>{
        
         const result = await db.query("SELECT password from userform where username = $1",[username]);
         console.log("PASSWORD FROM DB:" + result.rows[0].password);
-        const decrypted = encdec.decrypt(result.rows[0].password, key);
+        //HASHING ENCRYPTED
+        const decrypted = md5(password)
         console.log(decrypted);
         if(result){
-            if(decrypted === password){
+            if(decrypted === result.rows[0].password){
                 res.render("secrets");
             }
         }
