@@ -1,3 +1,4 @@
+import * as encdec from "@moonstack/encdec";
 import express from "express";
 import bodyParser from "body-parser";
 import pg from "pg";
@@ -13,6 +14,8 @@ const db = new pg.Client({
     database: "udemy"
 });
 db.connect();
+
+const key = "mysecretkey";
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -36,9 +39,11 @@ app.get("/login", (req,res)=>{
 
 app.post("/register", async (req,res)=>{
     const username = req.body.username;
-    const password = req.body.password;
     try {
-        const result = await db.query("INSERT INTO userform (username, password) values ($1, $2)",[username,password]);
+        const password = req.body.password;
+        const encrypted = encdec.encrypt(password, key);
+
+        const result = await db.query("INSERT INTO userform (username, password) values ($1, $2)",[username,encrypted]);
         if(result){
             res.render("secrets");
         }
@@ -51,10 +56,13 @@ app.post("/login", async(req,res)=>{
     const username = req.body.username;
     const password = req.body.password;
     try {
+       
         const result = await db.query("SELECT password from userform where username = $1",[username]);
-        console.log(result);
+        console.log("PASSWORD FROM DB:" + result.rows[0].password);
+        const decrypted = encdec.decrypt(result.rows[0].password, key);
+        console.log(decrypted);
         if(result){
-            if(result.rows[0].password === password){
+            if(decrypted === password){
                 res.render("secrets");
             }
         }
